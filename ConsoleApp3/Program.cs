@@ -11,17 +11,40 @@ namespace Lab2
             List<Car> carsList = Car.WriteFromXmlFile("cars.xml");
             List<Client> clientList = Client.WriteFromXmlFile("clients.xml");
             List<Agreement> agreementList = Agreement.WriteFromXmlFile("agreements.xml");
+
             
             FormingMainXmlFile(clientList, carsList, agreementList);
 
+
             Console.WriteLine("Choose an action: \n1 - I want to take a car\n" +
                 "2 - To show LINQ requests\n3 - To show all elements in file.xml");
-            int choice = Convert.ToInt32(Console.ReadLine());
+
+            int choice = 0;
+            try
+            {
+                bool result = int.TryParse(Console.ReadLine(), out choice);
+                if (!result)
+                    throw new Exception("Thats not a number !");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
             
             switch (choice)
             {
                 case 1:
-                    OrderForming(carsList, clientList, agreementList);
+                    try
+                    {
+                        OrderForming(carsList, clientList, agreementList);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine(ex.Message);
+                        Console.ResetColor();
+                    }
                     break;
                 case 2:
                     LinqToXmlRequests();
@@ -29,72 +52,105 @@ namespace Lab2
                 case 3:
                     ShowAllElementsFromTheMainXmlFile();
                     break;
+                default:
+                    Console.WriteLine("Please input 1,2 or 3 !");
+                    break;
             }
 
         }
         static void OrderForming(List<Car> carsList, List<Client> clientList, List<Agreement> agreementList)
         {
             Console.Write($"id of agreement: ");
-            int agreementIdentifier = Convert.ToInt16(Console.ReadLine());
+            int agreementIdentifier;
+            bool result = int.TryParse(Console.ReadLine(), out agreementIdentifier);
+            if (!result || agreementIdentifier <=0 )
+                throw new ArgumentException(" [not valid value inputed] ");
+
+            var idAlreadyExist = from x in agreementList
+                        where x.AgreementId == agreementIdentifier
+                        select x;
+
+            if (idAlreadyExist != null && idAlreadyExist.Count() != 0)
+                throw new ArgumentException(" [already exist] ");
+
 
             Console.Write("Who are you? \nInput your first name: ");
-            string? clientFirstName = Console.ReadLine();
+            string clientFirstName = Console.ReadLine();
+            if (!clientFirstName.All(char.IsLetter) || string.IsNullOrEmpty(clientFirstName))
+                throw new ArgumentException(" [not valid value inputed] ");
+
 
             Console.Write("Input your last name: ");
-            string? clientLastName = Console.ReadLine();
-            int clientIdentifier = 0;
+            string clientLastName = Console.ReadLine();
+            if (!clientLastName.All(char.IsLetter) || string.IsNullOrEmpty(clientLastName))
+                throw new ArgumentException(" [not valid value inputed] ");
 
+
+            int clientIdentifier = 0;
             Console.Write("Which car do you want to take?\nInput brand: ");
-            string? carBrand = Console.ReadLine();
+            string carBrand = Console.ReadLine();
+            if (string.IsNullOrEmpty(carBrand))
+                throw new ArgumentException(" [PLEASE INPUT A BRAND NAME] ");
+
 
             Console.Write("Input a year of production: ");
-            int carYearOfProduction = Convert.ToInt16(Console.ReadLine());
+            int carYearOfProduction;
+            bool result1 = int.TryParse(Console.ReadLine(), out carYearOfProduction);
+            
+            if (!result || carYearOfProduction == 0)
+                throw new ArgumentException(" [not valid value inputed] ");
+            if (carYearOfProduction > 2023 || carYearOfProduction < 1900)
+                throw new ArgumentException("Sorry, what? :))");
+
             int carIdentifier = 0;
 
             Console.Write("How long you want to use it (in weeks): ");
-            int numOfRentWeeks = Convert.ToInt16(Console.ReadLine());
+            int numOfRentWeeks;
+            bool result2 = int.TryParse(Console.ReadLine(), out numOfRentWeeks);
+            if (!result || numOfRentWeeks == 0)
+                throw new ArgumentException(" [not valid value inputed] ");
             DateTime dateOfRentBegin = DateTime.Now;
             DateTime dateOfRentEnd;
             TimeSpan durationOfRest = new TimeSpan(numOfRentWeeks * 7, 0, 0, 0);
             dateOfRentEnd = dateOfRentBegin + durationOfRest;
 
-            if (clientFirstName != null && clientLastName != null)
+            for (int i = 0; i < clientList.Count; i++)
             {
-                for (int i = 0; i < clientList.Count; i++)
+                if (clientList[i].ClientFirstName == clientFirstName && clientList[i].ClientLastName.ToString() == clientLastName)
                 {
-                    if (clientList[i].ClientFirstName == clientFirstName && clientList[i].ClientLastName.ToString() == clientLastName)
-                    {
-                        clientIdentifier = i + 1;
-                        i = clientList.Count;
-                    }
+                    clientIdentifier = i + 1;
+                    i = clientList.Count;
                 }
-                if (clientIdentifier == 0)
-                    Console.WriteLine("Client not found");
             }
+            if (clientIdentifier == 0)
+                throw new ArgumentException("Client not found");
 
-            if (carBrand != null && carYearOfProduction.ToString() != null)
+            for (int i = 0; i < carsList.Count; i++)
             {
-                for (int i = 0; i < carsList.Count; i++)
+                if (carsList[i].CarBrand == carBrand && carsList[i].CarYear == carYearOfProduction)
                 {
-                    if (carsList[i].CarBrand == carBrand && carsList[i].CarYear == carYearOfProduction)
-                    {
-                        carIdentifier = i + 1;
-                        i = carsList.Count;
-                    }
+                    carIdentifier = i + 1;
+                    i = carsList.Count;
                 }
-                if (clientIdentifier == 0)
-                    Console.WriteLine("Car not found");
             }
+            if (clientIdentifier == 0)
+                throw new ArgumentException("Car not found");
+
             Agreement? agreementInstance = null;
-            Agreement.FormingAgreementNodeIntoAgreementsXml(agreementIdentifier, dateOfRentBegin, clientIdentifier, carIdentifier, dateOfRentEnd);
-
-
+            try
+            {
+                Agreement.FormingAgreementNodeIntoAgreementsXml(agreementIdentifier, dateOfRentBegin, clientIdentifier, carIdentifier, dateOfRentEnd);
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Agreement was not formed");
+            }
+            
 
             //try to form an agreement instance with inputed dates
             try{agreementInstance = new Agreement(agreementIdentifier, dateOfRentBegin, clientIdentifier, carIdentifier, dateOfRentEnd);}
             catch (Exception)
             {Console.WriteLine("Forming Order ERROR");}
-
 
 
             //try to add agreement instance to collection and to update the main xml file
@@ -113,15 +169,15 @@ namespace Lab2
 
             foreach (XElement clientelement in xDocShow.Element("CarPark").Element("Clients").Elements("client"))
             {
-                XElement clId = clientelement.Element("id");
-                XElement firstName1 = clientelement.Element("firstName");
-                XElement lastName1 = clientelement.Element("lastName");
-                XElement adress = clientelement.Element("adress");
-                XElement phoneNum = clientelement.Element("phoneNumber");
+                XElement clientID = clientelement.Element("id");
+                XElement clFirstName = clientelement.Element("firstName");
+                XElement clLastName = clientelement.Element("lastName");
+                XElement clAdress = clientelement.Element("adress");
+                XElement clPhoneNum = clientelement.Element("phoneNumber");
 
-                if (clId != null && firstName1.Value != null && lastName1.Value != null && adress != null && phoneNum != null)
+                if (clientID != null && clFirstName.Value != null && clLastName.Value != null && clAdress != null && clPhoneNum != null)
                 {
-                    Console.WriteLine($"ID: {clId.Value}, Name: {firstName1.Value} {lastName1.Value}\nAdress: {adress.Value}\nPhone number: {phoneNum.Value}\n");
+                    Console.WriteLine($"ID: {clientID.Value}, Name: {clFirstName.Value} {clLastName.Value}\nAdress: {clAdress.Value}\nPhone number: {clPhoneNum.Value}\n");
                 }
             }
 
@@ -172,6 +228,7 @@ namespace Lab2
             IEnumerable<XElement> carElements = xDocR.Element("CarPark").Element("Cars").Elements("car");
             IEnumerable<XElement> agree = xDocR.Element("CarPark").Element("Agreements").Elements("agreement");
 
+
             Console.WriteLine("1. Перелiк зареєстрованих клiєнтів, вiдсортованi за алфавiтом");
             var querySorted = xDocR.Descendants("client").Select(p =>
             p.Element("firstName").Value).OrderBy(p => p.Trim());
@@ -209,6 +266,7 @@ namespace Lab2
             var q1 = from x in clientElements
                      where x.Element("lastName").Value == "Vozniak" && ((int)x.Element("id") > 3)
                      select x;
+
             foreach (var x in q1)
                 Console.WriteLine($"ID: {x.Element("id").Value} Name: {x.Element("firstName").Value} {x.Element("lastName").Value}");
             Console.WriteLine();
@@ -219,6 +277,7 @@ namespace Lab2
                      where (int)x.Element("id") > 1 && (x.Element("clientID").Value == "5" || x.Element("clientID").Value == "2")
                      orderby x.Element("id").Value descending
                      select x;
+
             foreach (var x in q2)
                 Console.WriteLine($"ID: {x.Element("id").Value}, ClientID: {x.Element("clientID").Value}");
             Console.WriteLine();
@@ -303,7 +362,8 @@ namespace Lab2
         {
             XmlWriterSettings settings = new XmlWriterSettings();
             settings.Indent = true;
-            //створення документу labka2.xml і запис туди елементів з колекцій: машини і клієнти
+
+
             using (XmlWriter writer = XmlWriter.Create("labka2.xml", settings))
             {
                 writer.WriteStartElement("CarPark");
